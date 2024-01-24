@@ -45,9 +45,10 @@ export default [
       format: "es",
     },
     plugins: [
-      babel({
-        babelHelpers: "bundled",
-        exclude: ["node_modules/**"],
+      terser({
+        compress: {
+          passes: 6,
+        },
       }),
     ],
     external: ["robust-predicates", "splaytree"],
