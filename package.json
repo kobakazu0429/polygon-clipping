@@ -1,5 +1,5 @@
 {
-  "name": "polygon-clipping",
+  "name": "@kobakazu0429/polygon-clipping",
   "version": "0.15.7",
   "description": "Apply boolean Polygon clipping operations (intersection, union, difference, xor) to your Polygons & MultiPolygons.",
   "main": "dist/polygon-clipping.cjs.js",
