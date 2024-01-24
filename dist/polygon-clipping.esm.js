@@ -9,7 +9,12 @@ import { orient2d } from 'robust-predicates';
  */
 
 const isInBbox = (bbox, point) => {
-  return bbox.ll.x <= point.x && point.x <= bbox.ur.x && bbox.ll.y <= point.y && point.y <= bbox.ur.y;
+  return (
+    bbox.ll.x <= point.x &&
+    point.x <= bbox.ur.x &&
+    bbox.ll.y <= point.y &&
+    point.y <= bbox.ur.y
+  )
 };
 
 /* Returns either null, or a bbox (aka an ordered pair of points)
@@ -17,7 +22,13 @@ const isInBbox = (bbox, point) => {
  * will be returned */
 const getBboxOverlap = (b1, b2) => {
   // check if the bboxes overlap at all
-  if (b2.ur.x < b1.ll.x || b1.ur.x < b2.ll.x || b2.ur.y < b1.ll.y || b1.ur.y < b2.ll.y) return null;
+  if (
+    b2.ur.x < b1.ll.x ||
+    b1.ur.x < b2.ll.x ||
+    b2.ur.y < b1.ll.y ||
+    b1.ur.y < b2.ll.y
+  )
+    return null
 
   // find the middle two X values
   const lowerX = b1.ll.x < b2.ll.x ? b2.ll.x : b1.ll.x;
@@ -28,16 +39,7 @@ const getBboxOverlap = (b1, b2) => {
   const upperY = b1.ur.y < b2.ur.y ? b1.ur.y : b2.ur.y;
 
   // put those middle values together to get the overlap
-  return {
-    ll: {
-      x: lowerX,
-      y: lowerY
-    },
-    ur: {
-      x: upperX,
-      y: upperY
-    }
-  };
+  return { ll: { x: lowerX, y: lowerY }, ur: { x: upperX, y: upperY } }
 };
 
 /* Javascript doesn't do integer math. Everything is
@@ -50,6 +52,7 @@ let epsilon = Number.EPSILON;
 
 // IE Polyfill
 if (epsilon === undefined) epsilon = Math.pow(2, -52);
+
 const EPSILON_SQ = epsilon * epsilon;
 
 /* FLP comparator */
@@ -57,18 +60,18 @@ const cmp = (a, b) => {
   // check if they're both 0
   if (-epsilon < a && a < epsilon) {
     if (-epsilon < b && b < epsilon) {
-      return 0;
+      return 0
     }
   }
 
   // check if they're flp equal
   const ab = a - b;
   if (ab * ab < EPSILON_SQ * a * b) {
-    return 0;
+    return 0
   }
 
   // normal comparison
-  return a < b ? -1 : 1;
+  return a < b ? -1 : 1
 };
 
 /**
@@ -88,17 +91,20 @@ class PtRounder {
   constructor() {
     this.reset();
   }
+
   reset() {
     this.xRounder = new CoordRounder();
     this.yRounder = new CoordRounder();
   }
+
   round(x, y) {
     return {
       x: this.xRounder.round(x),
-      y: this.yRounder.round(y)
-    };
+      y: this.yRounder.round(y),
+    }
   }
 }
+
 class CoordRounder {
   constructor() {
     this.tree = new SplayTree();
@@ -115,17 +121,20 @@ class CoordRounder {
   //       angle for t-intersections).
   round(coord) {
     const node = this.tree.add(coord);
+
     const prevNode = this.tree.prev(node);
     if (prevNode !== null && cmp(node.key, prevNode.key) === 0) {
       this.tree.remove(coord);
-      return prevNode.key;
+      return prevNode.key
     }
+
     const nextNode = this.tree.next(node);
     if (nextNode !== null && cmp(node.key, nextNode.key) === 0) {
       this.tree.remove(coord);
-      return nextNode.key;
+      return nextNode.key
     }
-    return coord;
+
+    return coord
   }
 }
 
@@ -140,59 +149,49 @@ const dotProduct = (a, b) => a.x * b.x + a.y * b.y;
 
 /* Comparator for two vectors with same starting point */
 const compareVectorAngles = (basePt, endPt1, endPt2) => {
-  const res = orient2d(basePt.x, basePt.y, endPt1.x, endPt1.y, endPt2.x, endPt2.y);
-  if (res > 0) return -1;
-  if (res < 0) return 1;
-  return 0;
+  const res = orient2d(
+    basePt.x,
+    basePt.y,
+    endPt1.x,
+    endPt1.y,
+    endPt2.x,
+    endPt2.y,
+  );
+  if (res > 0) return -1
+  if (res < 0) return 1
+  return 0
 };
-const length = v => Math.sqrt(dotProduct(v, v));
+
+const length = (v) => Math.sqrt(dotProduct(v, v));
 
 /* Get the sine of the angle from pShared -> pAngle to pShaed -> pBase */
 const sineOfAngle = (pShared, pBase, pAngle) => {
-  const vBase = {
-    x: pBase.x - pShared.x,
-    y: pBase.y - pShared.y
-  };
-  const vAngle = {
-    x: pAngle.x - pShared.x,
-    y: pAngle.y - pShared.y
-  };
-  return crossProduct(vAngle, vBase) / length(vAngle) / length(vBase);
+  const vBase = { x: pBase.x - pShared.x, y: pBase.y - pShared.y };
+  const vAngle = { x: pAngle.x - pShared.x, y: pAngle.y - pShared.y };
+  return crossProduct(vAngle, vBase) / length(vAngle) / length(vBase)
 };
 
 /* Get the cosine of the angle from pShared -> pAngle to pShaed -> pBase */
 const cosineOfAngle = (pShared, pBase, pAngle) => {
-  const vBase = {
-    x: pBase.x - pShared.x,
-    y: pBase.y - pShared.y
-  };
-  const vAngle = {
-    x: pAngle.x - pShared.x,
-    y: pAngle.y - pShared.y
-  };
-  return dotProduct(vAngle, vBase) / length(vAngle) / length(vBase);
+  const vBase = { x: pBase.x - pShared.x, y: pBase.y - pShared.y };
+  const vAngle = { x: pAngle.x - pShared.x, y: pAngle.y - pShared.y };
+  return dotProduct(vAngle, vBase) / length(vAngle) / length(vBase)
 };
 
 /* Get the x coordinate where the given line (defined by a point and vector)
  * crosses the horizontal line with the given y coordiante.
  * In the case of parrallel lines (including overlapping ones) returns null. */
 const horizontalIntersection = (pt, v, y) => {
-  if (v.y === 0) return null;
-  return {
-    x: pt.x + v.x / v.y * (y - pt.y),
-    y: y
-  };
+  if (v.y === 0) return null
+  return { x: pt.x + (v.x / v.y) * (y - pt.y), y: y }
 };
 
 /* Get the y coordinate where the given line (defined by a point and vector)
  * crosses the vertical line with the given x coordiante.
  * In the case of parrallel lines (including overlapping ones) returns null. */
 const verticalIntersection = (pt, v, x) => {
-  if (v.x === 0) return null;
-  return {
-    x: x,
-    y: pt.y + v.y / v.x * (x - pt.x)
-  };
+  if (v.x === 0) return null
+  return { x: x, y: pt.y + (v.y / v.x) * (x - pt.x) }
 };
 
 /* Get the intersection of two lines, each defined by a base point and a vector.
@@ -201,21 +200,19 @@ const intersection$1 = (pt1, v1, pt2, v2) => {
   // take some shortcuts for vertical and horizontal lines
   // this also ensures we don't calculate an intersection and then discover
   // it's actually outside the bounding box of the line
-  if (v1.x === 0) return verticalIntersection(pt2, v2, pt1.x);
-  if (v2.x === 0) return verticalIntersection(pt1, v1, pt2.x);
-  if (v1.y === 0) return horizontalIntersection(pt2, v2, pt1.y);
-  if (v2.y === 0) return horizontalIntersection(pt1, v1, pt2.y);
+  if (v1.x === 0) return verticalIntersection(pt2, v2, pt1.x)
+  if (v2.x === 0) return verticalIntersection(pt1, v1, pt2.x)
+  if (v1.y === 0) return horizontalIntersection(pt2, v2, pt1.y)
+  if (v2.y === 0) return horizontalIntersection(pt1, v1, pt2.y)
 
   // General case for non-overlapping segments.
   // This algorithm is based on Schneider and Eberly.
   // http://www.cimec.org.ar/~ncalvo/Schneider_Eberly.pdf - pg 244
 
   const kross = crossProduct(v1, v2);
-  if (kross == 0) return null;
-  const ve = {
-    x: pt2.x - pt1.x,
-    y: pt2.y - pt1.y
-  };
+  if (kross == 0) return null
+
+  const ve = { x: pt2.x - pt1.x, y: pt2.y - pt1.y };
   const d1 = crossProduct(ve, v1) / kross;
   const d2 = crossProduct(ve, v2) / kross;
 
@@ -226,10 +223,7 @@ const intersection$1 = (pt1, v1, pt2, v2) => {
     y2 = pt2.y + d1 * v2.y;
   const x = (x1 + x2) / 2;
   const y = (y1 + y2) / 2;
-  return {
-    x: x,
-    y: y
-  };
+  return { x: x, y: y }
 };
 
 class SweepEvent {
@@ -237,38 +231,42 @@ class SweepEvent {
   static compare(a, b) {
     // favor event with a point that the sweep line hits first
     const ptCmp = SweepEvent.comparePoints(a.point, b.point);
-    if (ptCmp !== 0) return ptCmp;
+    if (ptCmp !== 0) return ptCmp
 
     // the points are the same, so link them if needed
     if (a.point !== b.point) a.link(b);
 
     // favor right events over left
-    if (a.isLeft !== b.isLeft) return a.isLeft ? 1 : -1;
+    if (a.isLeft !== b.isLeft) return a.isLeft ? 1 : -1
 
     // we have two matching left or right endpoints
     // ordering of this case is the same as for their segments
-    return Segment.compare(a.segment, b.segment);
+    return Segment.compare(a.segment, b.segment)
   }
 
   // for ordering points in sweep line order
   static comparePoints(aPt, bPt) {
-    if (aPt.x < bPt.x) return -1;
-    if (aPt.x > bPt.x) return 1;
-    if (aPt.y < bPt.y) return -1;
-    if (aPt.y > bPt.y) return 1;
-    return 0;
+    if (aPt.x < bPt.x) return -1
+    if (aPt.x > bPt.x) return 1
+
+    if (aPt.y < bPt.y) return -1
+    if (aPt.y > bPt.y) return 1
+
+    return 0
   }
 
   // Warning: 'point' input will be modified and re-used (for performance)
   constructor(point, isLeft) {
-    if (point.events === undefined) point.events = [this];else point.events.push(this);
+    if (point.events === undefined) point.events = [this];
+    else point.events.push(this);
     this.point = point;
     this.isLeft = isLeft;
     // this.segment, this.otherSE set by factory
   }
+
   link(other) {
     if (other.point === this.point) {
-      throw new Error("Tried to link already linked events");
+      throw new Error("Tried to link already linked events")
     }
     const otherEvents = other.point.events;
     for (let i = 0, iMax = otherEvents.length; i < iMax; i++) {
@@ -291,15 +289,16 @@ class SweepEvent {
     const numEvents = this.point.events.length;
     for (let i = 0; i < numEvents; i++) {
       const evt1 = this.point.events[i];
-      if (evt1.segment.consumedBy !== undefined) continue;
+      if (evt1.segment.consumedBy !== undefined) continue
       for (let j = i + 1; j < numEvents; j++) {
         const evt2 = this.point.events[j];
-        if (evt2.consumedBy !== undefined) continue;
-        if (evt1.otherSE.point.events !== evt2.otherSE.point.events) continue;
+        if (evt2.consumedBy !== undefined) continue
+        if (evt1.otherSE.point.events !== evt2.otherSE.point.events) continue
         evt1.segment.consume(evt2.segment);
       }
     }
   }
+
   getAvailableLinkedEvents() {
     // point.events is always of length 2 or greater
     const events = [];
@@ -309,7 +308,7 @@ class SweepEvent {
         events.push(evt);
       }
     }
-    return events;
+    return events
   }
 
   /**
@@ -324,50 +323,48 @@ class SweepEvent {
    */
   getLeftmostComparator(baseEvent) {
     const cache = new Map();
-    const fillCache = linkedEvent => {
+
+    const fillCache = (linkedEvent) => {
       const nextEvent = linkedEvent.otherSE;
       cache.set(linkedEvent, {
         sine: sineOfAngle(this.point, baseEvent.point, nextEvent.point),
-        cosine: cosineOfAngle(this.point, baseEvent.point, nextEvent.point)
+        cosine: cosineOfAngle(this.point, baseEvent.point, nextEvent.point),
       });
     };
+
     return (a, b) => {
       if (!cache.has(a)) fillCache(a);
       if (!cache.has(b)) fillCache(b);
-      const {
-        sine: asine,
-        cosine: acosine
-      } = cache.get(a);
-      const {
-        sine: bsine,
-        cosine: bcosine
-      } = cache.get(b);
+
+      const { sine: asine, cosine: acosine } = cache.get(a);
+      const { sine: bsine, cosine: bcosine } = cache.get(b);
 
       // both on or above x-axis
       if (asine >= 0 && bsine >= 0) {
-        if (acosine < bcosine) return 1;
-        if (acosine > bcosine) return -1;
-        return 0;
+        if (acosine < bcosine) return 1
+        if (acosine > bcosine) return -1
+        return 0
       }
 
       // both below x-axis
       if (asine < 0 && bsine < 0) {
-        if (acosine < bcosine) return -1;
-        if (acosine > bcosine) return 1;
-        return 0;
+        if (acosine < bcosine) return -1
+        if (acosine > bcosine) return 1
+        return 0
       }
 
       // one above x-axis, one below
-      if (bsine < asine) return -1;
-      if (bsine > asine) return 1;
-      return 0;
-    };
+      if (bsine < asine) return -1
+      if (bsine > asine) return 1
+      return 0
+    }
   }
 }
 
 // Give segments unique ID's to get consistent sorting of
 // segments and sweep events when all else is identical
 let segmentId = 0;
+
 class Segment {
   /* This compare() function is for ordering segments in the sweep
    * line tree, and does so according to the following criteria:
@@ -389,8 +386,9 @@ class Segment {
     const brx = b.rightSE.point.x;
 
     // check if they're even in the same vertical plane
-    if (brx < alx) return 1;
-    if (arx < blx) return -1;
+    if (brx < alx) return 1
+    if (arx < blx) return -1
+
     const aly = a.leftSE.point.y;
     const bly = b.leftSE.point.y;
     const ary = a.rightSE.point.y;
@@ -399,48 +397,48 @@ class Segment {
     // is left endpoint of segment B the right-more?
     if (alx < blx) {
       // are the two segments in the same horizontal plane?
-      if (bly < aly && bly < ary) return 1;
-      if (bly > aly && bly > ary) return -1;
+      if (bly < aly && bly < ary) return 1
+      if (bly > aly && bly > ary) return -1
 
       // is the B left endpoint colinear to segment A?
       const aCmpBLeft = a.comparePoint(b.leftSE.point);
-      if (aCmpBLeft < 0) return 1;
-      if (aCmpBLeft > 0) return -1;
+      if (aCmpBLeft < 0) return 1
+      if (aCmpBLeft > 0) return -1
 
       // is the A right endpoint colinear to segment B ?
       const bCmpARight = b.comparePoint(a.rightSE.point);
-      if (bCmpARight !== 0) return bCmpARight;
+      if (bCmpARight !== 0) return bCmpARight
 
       // colinear segments, consider the one with left-more
       // left endpoint to be first (arbitrary?)
-      return -1;
+      return -1
     }
 
     // is left endpoint of segment A the right-more?
     if (alx > blx) {
-      if (aly < bly && aly < bry) return -1;
-      if (aly > bly && aly > bry) return 1;
+      if (aly < bly && aly < bry) return -1
+      if (aly > bly && aly > bry) return 1
 
       // is the A left endpoint colinear to segment B?
       const bCmpALeft = b.comparePoint(a.leftSE.point);
-      if (bCmpALeft !== 0) return bCmpALeft;
+      if (bCmpALeft !== 0) return bCmpALeft
 
       // is the B right endpoint colinear to segment A?
       const aCmpBRight = a.comparePoint(b.rightSE.point);
-      if (aCmpBRight < 0) return 1;
-      if (aCmpBRight > 0) return -1;
+      if (aCmpBRight < 0) return 1
+      if (aCmpBRight > 0) return -1
 
       // colinear segments, consider the one with left-more
       // left endpoint to be first (arbitrary?)
-      return 1;
+      return 1
     }
 
     // if we get here, the two left endpoints are in the same
     // vertical plane, ie alx === blx
 
     // consider the lower left-endpoint to come first
-    if (aly < bly) return -1;
-    if (aly > bly) return 1;
+    if (aly < bly) return -1
+    if (aly > bly) return 1
 
     // left endpoints are identical
     // check for colinearity by using the left-more right endpoint
@@ -448,15 +446,16 @@ class Segment {
     // is the A right endpoint more left-more?
     if (arx < brx) {
       const bCmpARight = b.comparePoint(a.rightSE.point);
-      if (bCmpARight !== 0) return bCmpARight;
+      if (bCmpARight !== 0) return bCmpARight
     }
 
     // is the B right endpoint more left-more?
     if (arx > brx) {
       const aCmpBRight = a.comparePoint(b.rightSE.point);
-      if (aCmpBRight < 0) return 1;
-      if (aCmpBRight > 0) return -1;
+      if (aCmpBRight < 0) return 1
+      if (aCmpBRight > 0) return -1
     }
+
     if (arx !== brx) {
       // are these two [almost] vertical segments with opposite orientation?
       // if so, the one with the lower right endpoint comes first
@@ -464,29 +463,29 @@ class Segment {
       const ax = arx - alx;
       const by = bry - bly;
       const bx = brx - blx;
-      if (ay > ax && by < bx) return 1;
-      if (ay < ax && by > bx) return -1;
+      if (ay > ax && by < bx) return 1
+      if (ay < ax && by > bx) return -1
     }
 
     // we have colinear segments with matching orientation
     // consider the one with more left-more right endpoint to be first
-    if (arx > brx) return 1;
-    if (arx < brx) return -1;
+    if (arx > brx) return 1
+    if (arx < brx) return -1
 
     // if we get here, two two right endpoints are in the same
     // vertical plane, ie arx === brx
 
     // consider the lower right-endpoint to come first
-    if (ary < bry) return -1;
-    if (ary > bry) return 1;
+    if (ary < bry) return -1
+    if (ary > bry) return 1
 
     // right endpoints identical as well, so the segments are idential
     // fall back on creation order as consistent tie-breaker
-    if (a.id < b.id) return -1;
-    if (a.id > b.id) return 1;
+    if (a.id < b.id) return -1
+    if (a.id > b.id) return 1
 
     // identical segment, ie a === b
-    return 0;
+    return 0
   }
 
   /* Warning: a reference to ringWindings input will be stored,
@@ -504,6 +503,7 @@ class Segment {
     // left unset for performance, set later in algorithm
     // this.ringOut, this.consumedBy, this.prev
   }
+
   static fromRing(pt1, pt2, ring) {
     let leftPt, rightPt, winding;
 
@@ -517,10 +517,14 @@ class Segment {
       leftPt = pt2;
       rightPt = pt1;
       winding = -1;
-    } else throw new Error(`Tried to create degenerate segment at [${pt1.x}, ${pt1.y}]`);
+    } else
+      throw new Error(
+        `Tried to create degenerate segment at [${pt1.x}, ${pt1.y}]`,
+      )
+
     const leftSE = new SweepEvent(leftPt, true);
     const rightSE = new SweepEvent(rightPt, false);
-    return new Segment(leftSE, rightSE, [ring], [winding]);
+    return new Segment(leftSE, rightSE, [ring], [winding])
   }
 
   /* When a segment is split, the rightSE is replaced with a new sweep event */
@@ -530,30 +534,29 @@ class Segment {
     this.rightSE.otherSE = this.leftSE;
     this.leftSE.otherSE = this.rightSE;
   }
+
   bbox() {
     const y1 = this.leftSE.point.y;
     const y2 = this.rightSE.point.y;
     return {
-      ll: {
-        x: this.leftSE.point.x,
-        y: y1 < y2 ? y1 : y2
-      },
-      ur: {
-        x: this.rightSE.point.x,
-        y: y1 > y2 ? y1 : y2
-      }
-    };
+      ll: { x: this.leftSE.point.x, y: y1 < y2 ? y1 : y2 },
+      ur: { x: this.rightSE.point.x, y: y1 > y2 ? y1 : y2 },
+    }
   }
 
   /* A vector from the left point to the right */
   vector() {
     return {
       x: this.rightSE.point.x - this.leftSE.point.x,
-      y: this.rightSE.point.y - this.leftSE.point.y
-    };
+      y: this.rightSE.point.y - this.leftSE.point.y,
+    }
   }
+
   isAnEndpoint(pt) {
-    return pt.x === this.leftSE.point.x && pt.y === this.leftSE.point.y || pt.x === this.rightSE.point.x && pt.y === this.rightSE.point.y;
+    return (
+      (pt.x === this.leftSE.point.x && pt.y === this.leftSE.point.y) ||
+      (pt.x === this.rightSE.point.x && pt.y === this.rightSE.point.y)
+    )
   }
 
   /* Compare this segment with a point.
@@ -570,29 +573,30 @@ class Segment {
    *  -1: point lies below the segment (to the right of vertical)
    */
   comparePoint(point) {
-    if (this.isAnEndpoint(point)) return 0;
+    if (this.isAnEndpoint(point)) return 0
+
     const lPt = this.leftSE.point;
     const rPt = this.rightSE.point;
     const v = this.vector();
 
     // Exactly vertical segments.
     if (lPt.x === rPt.x) {
-      if (point.x === lPt.x) return 0;
-      return point.x < lPt.x ? 1 : -1;
+      if (point.x === lPt.x) return 0
+      return point.x < lPt.x ? 1 : -1
     }
 
     // Nearly vertical segments with an intersection.
     // Check to see where a point on the line with matching Y coordinate is.
     const yDist = (point.y - lPt.y) / v.y;
     const xFromYDist = lPt.x + yDist * v.x;
-    if (point.x === xFromYDist) return 0;
+    if (point.x === xFromYDist) return 0
 
     // General case.
     // Check to see where a point on the line with matching X coordinate is.
     const xDist = (point.x - lPt.x) / v.x;
     const yFromXDist = lPt.y + xDist * v.y;
-    if (point.y === yFromXDist) return 0;
-    return point.y < yFromXDist ? -1 : 1;
+    if (point.y === yFromXDist) return 0
+    return point.y < yFromXDist ? -1 : 1
   }
 
   /**
@@ -615,7 +619,7 @@ class Segment {
     const tBbox = this.bbox();
     const oBbox = other.bbox();
     const bboxOverlap = getBboxOverlap(tBbox, oBbox);
-    if (bboxOverlap === null) return null;
+    if (bboxOverlap === null) return null
 
     // We first check to see if the endpoints can be considered intersections.
     // This will 'snap' intersections to endpoints if possible, and will
@@ -638,39 +642,39 @@ class Segment {
     if (touchesThisLSE && touchesOtherLSE) {
       // these two cases are for colinear segments with matching left
       // endpoints, and one segment being longer than the other
-      if (touchesThisRSE && !touchesOtherRSE) return trp;
-      if (!touchesThisRSE && touchesOtherRSE) return orp;
+      if (touchesThisRSE && !touchesOtherRSE) return trp
+      if (!touchesThisRSE && touchesOtherRSE) return orp
       // either the two segments match exactly (two trival intersections)
       // or just on their left endpoint (one trivial intersection
-      return null;
+      return null
     }
 
     // does this left endpoint matches (other doesn't)
     if (touchesThisLSE) {
       // check for segments that just intersect on opposing endpoints
       if (touchesOtherRSE) {
-        if (tlp.x === orp.x && tlp.y === orp.y) return null;
+        if (tlp.x === orp.x && tlp.y === orp.y) return null
       }
       // t-intersection on left endpoint
-      return tlp;
+      return tlp
     }
 
     // does other left endpoint matches (this doesn't)
     if (touchesOtherLSE) {
       // check for segments that just intersect on opposing endpoints
       if (touchesThisRSE) {
-        if (trp.x === olp.x && trp.y === olp.y) return null;
+        if (trp.x === olp.x && trp.y === olp.y) return null
       }
       // t-intersection on left endpoint
-      return olp;
+      return olp
     }
 
     // trivial intersection on right endpoints
-    if (touchesThisRSE && touchesOtherRSE) return null;
+    if (touchesThisRSE && touchesOtherRSE) return null
 
     // t-intersections on just one right endpoint
-    if (touchesThisRSE) return trp;
-    if (touchesOtherRSE) return orp;
+    if (touchesThisRSE) return trp
+    if (touchesOtherRSE) return orp
 
     // None of our endpoints intersect. Look for a general intersection between
     // infinite lines laid over the segments
@@ -678,13 +682,13 @@ class Segment {
 
     // are the segments parrallel? Note that if they were colinear with overlap,
     // they would have an endpoint intersection and that case was already handled above
-    if (pt === null) return null;
+    if (pt === null) return null
 
     // is the intersection found between the lines not on the segments?
-    if (!isInBbox(bboxOverlap, pt)) return null;
+    if (!isInBbox(bboxOverlap, pt)) return null
 
     // round the the computed point if needed
-    return rounder.round(pt.x, pt.y);
+    return rounder.round(pt.x, pt.y)
   }
 
   /**
@@ -702,18 +706,26 @@ class Segment {
   split(point) {
     const newEvents = [];
     const alreadyLinked = point.events !== undefined;
+
     const newLeftSE = new SweepEvent(point, true);
     const newRightSE = new SweepEvent(point, false);
     const oldRightSE = this.rightSE;
     this.replaceRightSE(newRightSE);
     newEvents.push(newRightSE);
     newEvents.push(newLeftSE);
-    const newSeg = new Segment(newLeftSE, oldRightSE, this.rings.slice(), this.windings.slice());
+    const newSeg = new Segment(
+      newLeftSE,
+      oldRightSE,
+      this.rings.slice(),
+      this.windings.slice(),
+    );
 
     // when splitting a nearly vertical downward-facing segment,
     // sometimes one of the resulting new segments is vertical, in which
     // case its left and right events may need to be swapped
-    if (SweepEvent.comparePoints(newSeg.leftSE.point, newSeg.rightSE.point) > 0) {
+    if (
+      SweepEvent.comparePoints(newSeg.leftSE.point, newSeg.rightSE.point) > 0
+    ) {
       newSeg.swapEvents();
     }
     if (SweepEvent.comparePoints(this.leftSE.point, this.rightSE.point) > 0) {
@@ -727,7 +739,8 @@ class Segment {
       newLeftSE.checkForConsuming();
       newRightSE.checkForConsuming();
     }
-    return newEvents;
+
+    return newEvents
   }
 
   /* Swap which event is left and right */
@@ -749,8 +762,9 @@ class Segment {
     let consumee = other;
     while (consumer.consumedBy) consumer = consumer.consumedBy;
     while (consumee.consumedBy) consumee = consumee.consumedBy;
+
     const cmp = Segment.compare(consumer, consumee);
-    if (cmp === 0) return; // already consumed
+    if (cmp === 0) return // already consumed
     // the winner of the consumption is the earlier segment
     // according to sweep line ordering
     if (cmp > 0) {
@@ -765,6 +779,7 @@ class Segment {
       consumer = consumee;
       consumee = tmp;
     }
+
     for (let i = 0, iMax = consumee.rings.length; i < iMax; i++) {
       const ring = consumee.rings[i];
       const winding = consumee.windings[i];
@@ -785,29 +800,36 @@ class Segment {
 
   /* The first segment previous segment chain that is in the result */
   prevInResult() {
-    if (this._prevInResult !== undefined) return this._prevInResult;
-    if (!this.prev) this._prevInResult = null;else if (this.prev.isInResult()) this._prevInResult = this.prev;else this._prevInResult = this.prev.prevInResult();
-    return this._prevInResult;
+    if (this._prevInResult !== undefined) return this._prevInResult
+    if (!this.prev) this._prevInResult = null;
+    else if (this.prev.isInResult()) this._prevInResult = this.prev;
+    else this._prevInResult = this.prev.prevInResult();
+    return this._prevInResult
   }
+
   beforeState() {
-    if (this._beforeState !== undefined) return this._beforeState;
-    if (!this.prev) this._beforeState = {
-      rings: [],
-      windings: [],
-      multiPolys: []
-    };else {
+    if (this._beforeState !== undefined) return this._beforeState
+    if (!this.prev)
+      this._beforeState = {
+        rings: [],
+        windings: [],
+        multiPolys: [],
+      };
+    else {
       const seg = this.prev.consumedBy || this.prev;
       this._beforeState = seg.afterState();
     }
-    return this._beforeState;
+    return this._beforeState
   }
+
   afterState() {
-    if (this._afterState !== undefined) return this._afterState;
+    if (this._afterState !== undefined) return this._afterState
+
     const beforeState = this.beforeState();
     this._afterState = {
       rings: beforeState.rings.slice(0),
       windings: beforeState.windings.slice(0),
-      multiPolys: []
+      multiPolys: [],
     };
     const ringsAfter = this._afterState.rings;
     const windingsAfter = this._afterState.windings;
@@ -828,11 +850,12 @@ class Segment {
     const polysAfter = [];
     const polysExclude = [];
     for (let i = 0, iMax = ringsAfter.length; i < iMax; i++) {
-      if (windingsAfter[i] === 0) continue; // non-zero rule
+      if (windingsAfter[i] === 0) continue // non-zero rule
       const ring = ringsAfter[i];
       const poly = ring.poly;
-      if (polysExclude.indexOf(poly) !== -1) continue;
-      if (ring.isExterior) polysAfter.push(poly);else {
+      if (polysExclude.indexOf(poly) !== -1) continue
+      if (ring.isExterior) polysAfter.push(poly);
+      else {
         if (polysExclude.indexOf(poly) === -1) polysExclude.push(poly);
         const index = polysAfter.indexOf(ring.poly);
         if (index !== -1) polysAfter.splice(index, 1);
@@ -844,99 +867,108 @@ class Segment {
       const mp = polysAfter[i].multiPoly;
       if (mpsAfter.indexOf(mp) === -1) mpsAfter.push(mp);
     }
-    return this._afterState;
+
+    return this._afterState
   }
 
   /* Is this segment part of the final result? */
   isInResult() {
     // if we've been consumed, we're not in the result
-    if (this.consumedBy) return false;
-    if (this._isInResult !== undefined) return this._isInResult;
+    if (this.consumedBy) return false
+
+    if (this._isInResult !== undefined) return this._isInResult
+
     const mpsBefore = this.beforeState().multiPolys;
     const mpsAfter = this.afterState().multiPolys;
+
     switch (operation.type) {
-      case "union":
-        {
-          // UNION - included iff:
-          //  * On one side of us there is 0 poly interiors AND
-          //  * On the other side there is 1 or more.
-          const noBefores = mpsBefore.length === 0;
-          const noAfters = mpsAfter.length === 0;
-          this._isInResult = noBefores !== noAfters;
-          break;
+      case "union": {
+        // UNION - included iff:
+        //  * On one side of us there is 0 poly interiors AND
+        //  * On the other side there is 1 or more.
+        const noBefores = mpsBefore.length === 0;
+        const noAfters = mpsAfter.length === 0;
+        this._isInResult = noBefores !== noAfters;
+        break
+      }
+
+      case "intersection": {
+        // INTERSECTION - included iff:
+        //  * on one side of us all multipolys are rep. with poly interiors AND
+        //  * on the other side of us, not all multipolys are repsented
+        //    with poly interiors
+        let least;
+        let most;
+        if (mpsBefore.length < mpsAfter.length) {
+          least = mpsBefore.length;
+          most = mpsAfter.length;
+        } else {
+          least = mpsAfter.length;
+          most = mpsBefore.length;
         }
-      case "intersection":
-        {
-          // INTERSECTION - included iff:
-          //  * on one side of us all multipolys are rep. with poly interiors AND
-          //  * on the other side of us, not all multipolys are repsented
-          //    with poly interiors
-          let least;
-          let most;
-          if (mpsBefore.length < mpsAfter.length) {
-            least = mpsBefore.length;
-            most = mpsAfter.length;
-          } else {
-            least = mpsAfter.length;
-            most = mpsBefore.length;
-          }
-          this._isInResult = most === operation.numMultiPolys && least < most;
-          break;
-        }
-      case "xor":
-        {
-          // XOR - included iff:
-          //  * the difference between the number of multipolys represented
-          //    with poly interiors on our two sides is an odd number
-          const diff = Math.abs(mpsBefore.length - mpsAfter.length);
-          this._isInResult = diff % 2 === 1;
-          break;
-        }
-      case "difference":
-        {
-          // DIFFERENCE included iff:
-          //  * on exactly one side, we have just the subject
-          const isJustSubject = mps => mps.length === 1 && mps[0].isSubject;
-          this._isInResult = isJustSubject(mpsBefore) !== isJustSubject(mpsAfter);
-          break;
-        }
+        this._isInResult = most === operation.numMultiPolys && least < most;
+        break
+      }
+
+      case "xor": {
+        // XOR - included iff:
+        //  * the difference between the number of multipolys represented
+        //    with poly interiors on our two sides is an odd number
+        const diff = Math.abs(mpsBefore.length - mpsAfter.length);
+        this._isInResult = diff % 2 === 1;
+        break
+      }
+
+      case "difference": {
+        // DIFFERENCE included iff:
+        //  * on exactly one side, we have just the subject
+        const isJustSubject = (mps) => mps.length === 1 && mps[0].isSubject;
+        this._isInResult = isJustSubject(mpsBefore) !== isJustSubject(mpsAfter);
+        break
+      }
+
       default:
-        throw new Error(`Unrecognized operation type found ${operation.type}`);
+        throw new Error(`Unrecognized operation type found ${operation.type}`)
     }
-    return this._isInResult;
+
+    return this._isInResult
   }
 }
 
 class RingIn {
   constructor(geomRing, poly, isExterior) {
     if (!Array.isArray(geomRing) || geomRing.length === 0) {
-      throw new Error("Input geometry is not a valid Polygon or MultiPolygon");
+      throw new Error("Input geometry is not a valid Polygon or MultiPolygon")
     }
+
     this.poly = poly;
     this.isExterior = isExterior;
     this.segments = [];
-    if (typeof geomRing[0][0] !== "number" || typeof geomRing[0][1] !== "number") {
-      throw new Error("Input geometry is not a valid Polygon or MultiPolygon");
+
+    if (
+      typeof geomRing[0][0] !== "number" ||
+      typeof geomRing[0][1] !== "number"
+    ) {
+      throw new Error("Input geometry is not a valid Polygon or MultiPolygon")
     }
+
     const firstPoint = rounder.round(geomRing[0][0], geomRing[0][1]);
     this.bbox = {
-      ll: {
-        x: firstPoint.x,
-        y: firstPoint.y
-      },
-      ur: {
-        x: firstPoint.x,
-        y: firstPoint.y
-      }
+      ll: { x: firstPoint.x, y: firstPoint.y },
+      ur: { x: firstPoint.x, y: firstPoint.y },
     };
+
     let prevPoint = firstPoint;
     for (let i = 1, iMax = geomRing.length; i < iMax; i++) {
-      if (typeof geomRing[i][0] !== "number" || typeof geomRing[i][1] !== "number") {
-        throw new Error("Input geometry is not a valid Polygon or MultiPolygon");
+      if (
+        typeof geomRing[i][0] !== "number" ||
+        typeof geomRing[i][1] !== "number"
+      ) {
+        throw new Error("Input geometry is not a valid Polygon or MultiPolygon")
       }
       let point = rounder.round(geomRing[i][0], geomRing[i][1]);
       // skip repeated points
-      if (point.x === prevPoint.x && point.y === prevPoint.y) continue;
+      if (point.x === prevPoint.x && point.y === prevPoint.y) continue
       this.segments.push(Segment.fromRing(prevPoint, point, this));
       if (point.x < this.bbox.ll.x) this.bbox.ll.x = point.x;
       if (point.y < this.bbox.ll.y) this.bbox.ll.y = point.y;
@@ -949,6 +981,7 @@ class RingIn {
       this.segments.push(Segment.fromRing(prevPoint, firstPoint, this));
     }
   }
+
   getSweepEvents() {
     const sweepEvents = [];
     for (let i = 0, iMax = this.segments.length; i < iMax; i++) {
@@ -956,25 +989,20 @@ class RingIn {
       sweepEvents.push(segment.leftSE);
       sweepEvents.push(segment.rightSE);
     }
-    return sweepEvents;
+    return sweepEvents
   }
 }
+
 class PolyIn {
   constructor(geomPoly, multiPoly) {
     if (!Array.isArray(geomPoly)) {
-      throw new Error("Input geometry is not a valid Polygon or MultiPolygon");
+      throw new Error("Input geometry is not a valid Polygon or MultiPolygon")
     }
     this.exteriorRing = new RingIn(geomPoly[0], this, true);
     // copy by value
     this.bbox = {
-      ll: {
-        x: this.exteriorRing.bbox.ll.x,
-        y: this.exteriorRing.bbox.ll.y
-      },
-      ur: {
-        x: this.exteriorRing.bbox.ur.x,
-        y: this.exteriorRing.bbox.ur.y
-      }
+      ll: { x: this.exteriorRing.bbox.ll.x, y: this.exteriorRing.bbox.ll.y },
+      ur: { x: this.exteriorRing.bbox.ur.x, y: this.exteriorRing.bbox.ur.y },
     };
     this.interiorRings = [];
     for (let i = 1, iMax = geomPoly.length; i < iMax; i++) {
@@ -987,6 +1015,7 @@ class PolyIn {
     }
     this.multiPoly = multiPoly;
   }
+
   getSweepEvents() {
     const sweepEvents = this.exteriorRing.getSweepEvents();
     for (let i = 0, iMax = this.interiorRings.length; i < iMax; i++) {
@@ -995,14 +1024,16 @@ class PolyIn {
         sweepEvents.push(ringSweepEvents[j]);
       }
     }
-    return sweepEvents;
+    return sweepEvents
   }
 }
+
 class MultiPolyIn {
   constructor(geom, isSubject) {
     if (!Array.isArray(geom)) {
-      throw new Error("Input geometry is not a valid Polygon or MultiPolygon");
+      throw new Error("Input geometry is not a valid Polygon or MultiPolygon")
     }
+
     try {
       // if the input looks like a polygon, convert it to a multipolygon
       if (typeof geom[0][0][0] === "number") geom = [geom];
@@ -1010,16 +1041,11 @@ class MultiPolyIn {
       // The input is either malformed or has empty arrays.
       // In either case, it will be handled later on.
     }
+
     this.polys = [];
     this.bbox = {
-      ll: {
-        x: Number.POSITIVE_INFINITY,
-        y: Number.POSITIVE_INFINITY
-      },
-      ur: {
-        x: Number.NEGATIVE_INFINITY,
-        y: Number.NEGATIVE_INFINITY
-      }
+      ll: { x: Number.POSITIVE_INFINITY, y: Number.POSITIVE_INFINITY },
+      ur: { x: Number.NEGATIVE_INFINITY, y: Number.NEGATIVE_INFINITY },
     };
     for (let i = 0, iMax = geom.length; i < iMax; i++) {
       const poly = new PolyIn(geom[i], this);
@@ -1031,6 +1057,7 @@ class MultiPolyIn {
     }
     this.isSubject = isSubject;
   }
+
   getSweepEvents() {
     const sweepEvents = [];
     for (let i = 0, iMax = this.polys.length; i < iMax; i++) {
@@ -1039,7 +1066,7 @@ class MultiPolyIn {
         sweepEvents.push(polySweepEvents[j]);
       }
     }
-    return sweepEvents;
+    return sweepEvents
   }
 }
 
@@ -1048,13 +1075,16 @@ class RingOut {
    * of closed rings from all the segments marked to be part of the result */
   static factory(allSegments) {
     const ringsOut = [];
+
     for (let i = 0, iMax = allSegments.length; i < iMax; i++) {
       const segment = allSegments[i];
-      if (!segment.isInResult() || segment.ringOut) continue;
+      if (!segment.isInResult() || segment.ringOut) continue
+
       let prevEvent = null;
       let event = segment.leftSE;
       let nextEvent = segment.rightSE;
       const events = [event];
+
       const startingPoint = event.point;
       const intersectionLEs = [];
 
@@ -1065,7 +1095,8 @@ class RingOut {
         events.push(event);
 
         /* Is the ring complete? */
-        if (event.point === startingPoint) break;
+        if (event.point === startingPoint) break
+
         while (true) {
           const availableLEs = event.getAvailableLinkedEvents();
 
@@ -1074,13 +1105,17 @@ class RingOut {
           if (availableLEs.length === 0) {
             const firstPt = events[0].point;
             const lastPt = events[events.length - 1].point;
-            throw new Error(`Unable to complete output ring starting at [${firstPt.x},` + ` ${firstPt.y}]. Last matching segment found ends at` + ` [${lastPt.x}, ${lastPt.y}].`);
+            throw new Error(
+              `Unable to complete output ring starting at [${firstPt.x},` +
+                ` ${firstPt.y}]. Last matching segment found ends at` +
+                ` [${lastPt.x}, ${lastPt.y}].`,
+            )
           }
 
           /* Only one way to go, so cotinue on the path */
           if (availableLEs.length === 1) {
             nextEvent = availableLEs[0].otherSE;
-            break;
+            break
           }
 
           /* We must have an intersection. Check for a completed loop */
@@ -1088,7 +1123,7 @@ class RingOut {
           for (let j = 0, jMax = intersectionLEs.length; j < jMax; j++) {
             if (intersectionLEs[j].point === event.point) {
               indexLE = j;
-              break;
+              break
             }
           }
           /* Found a completed loop. Cut that off and make a ring */
@@ -1097,23 +1132,25 @@ class RingOut {
             const ringEvents = events.splice(intersectionLE.index);
             ringEvents.unshift(ringEvents[0].otherSE);
             ringsOut.push(new RingOut(ringEvents.reverse()));
-            continue;
+            continue
           }
           /* register the intersection */
           intersectionLEs.push({
             index: events.length,
-            point: event.point
+            point: event.point,
           });
           /* Choose the left-most option to continue the walk */
           const comparator = event.getLeftmostComparator(prevEvent);
           nextEvent = availableLEs.sort(comparator)[0].otherSE;
-          break;
+          break
         }
       }
+
       ringsOut.push(new RingOut(events));
     }
-    return ringsOut;
+    return ringsOut
   }
+
   constructor(events) {
     this.events = events;
     for (let i = 0, iMax = events.length; i < iMax; i++) {
@@ -1121,6 +1158,7 @@ class RingOut {
     }
     this.poly = null;
   }
+
   getGeom() {
     // Remove superfluous points (ie extra points along a straight line),
     let prevPt = this.events[0].point;
@@ -1128,38 +1166,42 @@ class RingOut {
     for (let i = 1, iMax = this.events.length - 1; i < iMax; i++) {
       const pt = this.events[i].point;
       const nextPt = this.events[i + 1].point;
-      if (compareVectorAngles(pt, prevPt, nextPt) === 0) continue;
+      if (compareVectorAngles(pt, prevPt, nextPt) === 0) continue
       points.push(pt);
       prevPt = pt;
     }
 
     // ring was all (within rounding error of angle calc) colinear points
-    if (points.length === 1) return null;
+    if (points.length === 1) return null
 
     // check if the starting point is necessary
     const pt = points[0];
     const nextPt = points[1];
     if (compareVectorAngles(pt, prevPt, nextPt) === 0) points.shift();
+
     points.push(points[0]);
     const step = this.isExteriorRing() ? 1 : -1;
     const iStart = this.isExteriorRing() ? 0 : points.length - 1;
     const iEnd = this.isExteriorRing() ? points.length : -1;
     const orderedPoints = [];
-    for (let i = iStart; i != iEnd; i += step) orderedPoints.push([points[i].x, points[i].y]);
-    return orderedPoints;
+    for (let i = iStart; i != iEnd; i += step)
+      orderedPoints.push([points[i].x, points[i].y]);
+    return orderedPoints
   }
+
   isExteriorRing() {
     if (this._isExteriorRing === undefined) {
       const enclosing = this.enclosingRing();
       this._isExteriorRing = enclosing ? !enclosing.isExteriorRing() : true;
     }
-    return this._isExteriorRing;
+    return this._isExteriorRing
   }
+
   enclosingRing() {
     if (this._enclosingRing === undefined) {
       this._enclosingRing = this._calcEnclosingRing();
     }
-    return this._enclosingRing;
+    return this._enclosingRing
   }
 
   /* Returns the ring that encloses this one, if any */
@@ -1171,23 +1213,25 @@ class RingOut {
       const evt = this.events[i];
       if (SweepEvent.compare(leftMostEvt, evt) > 0) leftMostEvt = evt;
     }
+
     let prevSeg = leftMostEvt.segment.prevInResult();
     let prevPrevSeg = prevSeg ? prevSeg.prevInResult() : null;
+
     while (true) {
       // no segment found, thus no ring can enclose us
-      if (!prevSeg) return null;
+      if (!prevSeg) return null
 
       // no segments below prev segment found, thus the ring of the prev
       // segment must loop back around and enclose us
-      if (!prevPrevSeg) return prevSeg.ringOut;
+      if (!prevPrevSeg) return prevSeg.ringOut
 
       // if the two segments are of different rings, the ring of the prev
       // segment must either loop around us or the ring of the prev prev
       // seg, which would make us and the ring of the prev peers
       if (prevPrevSeg.ringOut !== prevSeg.ringOut) {
         if (prevPrevSeg.ringOut.enclosingRing() !== prevSeg.ringOut) {
-          return prevSeg.ringOut;
-        } else return prevSeg.ringOut.enclosingRing();
+          return prevSeg.ringOut
+        } else return prevSeg.ringOut.enclosingRing()
       }
 
       // two segments are from the same ring, so this was a penisula
@@ -1197,56 +1241,63 @@ class RingOut {
     }
   }
 }
+
 class PolyOut {
   constructor(exteriorRing) {
     this.exteriorRing = exteriorRing;
     exteriorRing.poly = this;
     this.interiorRings = [];
   }
+
   addInterior(ring) {
     this.interiorRings.push(ring);
     ring.poly = this;
   }
+
   getGeom() {
     const geom = [this.exteriorRing.getGeom()];
     // exterior ring was all (within rounding error of angle calc) colinear points
-    if (geom[0] === null) return null;
+    if (geom[0] === null) return null
     for (let i = 0, iMax = this.interiorRings.length; i < iMax; i++) {
       const ringGeom = this.interiorRings[i].getGeom();
       // interior ring was all (within rounding error of angle calc) colinear points
-      if (ringGeom === null) continue;
+      if (ringGeom === null) continue
       geom.push(ringGeom);
     }
-    return geom;
+    return geom
   }
 }
+
 class MultiPolyOut {
   constructor(rings) {
     this.rings = rings;
     this.polys = this._composePolys(rings);
   }
+
   getGeom() {
     const geom = [];
     for (let i = 0, iMax = this.polys.length; i < iMax; i++) {
       const polyGeom = this.polys[i].getGeom();
       // exterior ring was all (within rounding error of angle calc) colinear points
-      if (polyGeom === null) continue;
+      if (polyGeom === null) continue
       geom.push(polyGeom);
     }
-    return geom;
+    return geom
   }
+
   _composePolys(rings) {
     const polys = [];
     for (let i = 0, iMax = rings.length; i < iMax; i++) {
       const ring = rings[i];
-      if (ring.poly) continue;
-      if (ring.isExteriorRing()) polys.push(new PolyOut(ring));else {
+      if (ring.poly) continue
+      if (ring.isExteriorRing()) polys.push(new PolyOut(ring));
+      else {
         const enclosingRing = ring.enclosingRing();
         if (!enclosingRing.poly) polys.push(new PolyOut(enclosingRing));
         enclosingRing.poly.addInterior(ring);
       }
     }
-    return polys;
+    return polys
   }
 }
 
@@ -1262,12 +1313,12 @@ class MultiPolyOut {
  */
 
 class SweepLine {
-  constructor(queue) {
-    let comparator = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : Segment.compare;
+  constructor(queue, comparator = Segment.compare) {
     this.queue = queue;
     this.tree = new SplayTree(comparator);
     this.segments = [];
   }
+
   process(event) {
     const segment = event.segment;
     const newEvents = [];
@@ -1275,11 +1326,21 @@ class SweepLine {
     // if we've already been consumed by another segment,
     // clean up our body parts and get out
     if (event.consumedBy) {
-      if (event.isLeft) this.queue.remove(event.otherSE);else this.tree.remove(segment);
-      return newEvents;
+      if (event.isLeft) this.queue.remove(event.otherSE);
+      else this.tree.remove(segment);
+      return newEvents
     }
+
     const node = event.isLeft ? this.tree.add(segment) : this.tree.find(segment);
-    if (!node) throw new Error(`Unable to find segment #${segment.id} ` + `[${segment.leftSE.point.x}, ${segment.leftSE.point.y}] -> ` + `[${segment.rightSE.point.x}, ${segment.rightSE.point.y}] ` + "in SweepLine tree.");
+
+    if (!node)
+      throw new Error(
+        `Unable to find segment #${segment.id} ` +
+          `[${segment.leftSE.point.x}, ${segment.leftSE.point.y}] -> ` +
+          `[${segment.rightSE.point.x}, ${segment.rightSE.point.y}] ` +
+          "in SweepLine tree.",
+      )
+
     let prevNode = node;
     let nextNode = node;
     let prevSeg = undefined;
@@ -1288,14 +1349,17 @@ class SweepLine {
     // skip consumed segments still in tree
     while (prevSeg === undefined) {
       prevNode = this.tree.prev(prevNode);
-      if (prevNode === null) prevSeg = null;else if (prevNode.key.consumedBy === undefined) prevSeg = prevNode.key;
+      if (prevNode === null) prevSeg = null;
+      else if (prevNode.key.consumedBy === undefined) prevSeg = prevNode.key;
     }
 
     // skip consumed segments still in tree
     while (nextSeg === undefined) {
       nextNode = this.tree.next(nextNode);
-      if (nextNode === null) nextSeg = null;else if (nextNode.key.consumedBy === undefined) nextSeg = nextNode.key;
+      if (nextNode === null) nextSeg = null;
+      else if (nextNode.key.consumedBy === undefined) nextSeg = nextNode.key;
     }
+
     if (event.isLeft) {
       // Check for intersections against the previous segment in the sweep line
       let prevMySplitter = null;
@@ -1332,8 +1396,13 @@ class SweepLine {
       // The other intersection will be handled in a future process().
       if (prevMySplitter !== null || nextMySplitter !== null) {
         let mySplitter = null;
-        if (prevMySplitter === null) mySplitter = nextMySplitter;else if (nextMySplitter === null) mySplitter = prevMySplitter;else {
-          const cmpSplitters = SweepEvent.comparePoints(prevMySplitter, nextMySplitter);
+        if (prevMySplitter === null) mySplitter = nextMySplitter;
+        else if (nextMySplitter === null) mySplitter = prevMySplitter;
+        else {
+          const cmpSplitters = SweepEvent.comparePoints(
+            prevMySplitter,
+            nextMySplitter,
+          );
           mySplitter = cmpSplitters <= 0 ? prevMySplitter : nextMySplitter;
         }
 
@@ -1341,11 +1410,13 @@ class SweepLine {
         // so remove afected segments and right sweep events before splitting
         this.queue.remove(segment.rightSE);
         newEvents.push(segment.rightSE);
+
         const newEventsFromSplit = segment.split(mySplitter);
         for (let i = 0, iMax = newEventsFromSplit.length; i < iMax; i++) {
           newEvents.push(newEventsFromSplit[i]);
         }
       }
+
       if (newEvents.length > 0) {
         // We found some intersections, so re-do the current event to
         // make sure sweep line ordering is totally consistent for later
@@ -1379,9 +1450,11 @@ class SweepLine {
           }
         }
       }
+
       this.tree.remove(segment);
     }
-    return newEvents;
+
+    return newEvents
   }
 
   /* Safely split a segment that is currently in the datastructures
@@ -1398,13 +1471,20 @@ class SweepLine {
     newEvents.push(rightSE);
     // splitting can trigger consumption
     if (seg.consumedBy === undefined) this.tree.add(seg);
-    return newEvents;
+    return newEvents
   }
 }
 
 // Limits on iterative processes to prevent infinite loops - usually caused by floating-point math round-off errors.
-const POLYGON_CLIPPING_MAX_QUEUE_SIZE = typeof process !== "undefined" && process.env.POLYGON_CLIPPING_MAX_QUEUE_SIZE || 1000000;
-const POLYGON_CLIPPING_MAX_SWEEPLINE_SEGMENTS = typeof process !== "undefined" && process.env.POLYGON_CLIPPING_MAX_SWEEPLINE_SEGMENTS || 1000000;
+const POLYGON_CLIPPING_MAX_QUEUE_SIZE =
+  (typeof process !== "undefined" &&
+    process.env.POLYGON_CLIPPING_MAX_QUEUE_SIZE) ||
+  1000000;
+const POLYGON_CLIPPING_MAX_SWEEPLINE_SEGMENTS =
+  (typeof process !== "undefined" &&
+    process.env.POLYGON_CLIPPING_MAX_SWEEPLINE_SEGMENTS) ||
+  1000000;
+
 class Operation {
   run(type, geom, moreGeoms) {
     operation.type = type;
@@ -1426,7 +1506,8 @@ class Operation {
       const subject = multipolys[0];
       let i = 1;
       while (i < multipolys.length) {
-        if (getBboxOverlap(multipolys[i].bbox, subject.bbox) !== null) i++;else multipolys.splice(i, 1);
+        if (getBboxOverlap(multipolys[i].bbox, subject.bbox) !== null) i++;
+        else multipolys.splice(i, 1);
       }
     }
 
@@ -1439,7 +1520,7 @@ class Operation {
       for (let i = 0, iMax = multipolys.length; i < iMax; i++) {
         const mpA = multipolys[i];
         for (let j = i + 1, jMax = multipolys.length; j < jMax; j++) {
-          if (getBboxOverlap(mpA.bbox, multipolys[j].bbox) === null) return [];
+          if (getBboxOverlap(mpA.bbox, multipolys[j].bbox) === null) return []
         }
       }
     }
@@ -1450,9 +1531,13 @@ class Operation {
       const sweepEvents = multipolys[i].getSweepEvents();
       for (let j = 0, jMax = sweepEvents.length; j < jMax; j++) {
         queue.insert(sweepEvents[j]);
+
         if (queue.size > POLYGON_CLIPPING_MAX_QUEUE_SIZE) {
           // prevents an infinite loop, an otherwise common manifestation of bugs
-          throw new Error("Infinite loop when putting segment endpoints in a priority queue " + "(queue size too big).");
+          throw new Error(
+            "Infinite loop when putting segment endpoints in a priority queue " +
+              "(queue size too big).",
+          )
         }
       }
     }
@@ -1466,16 +1551,30 @@ class Operation {
       if (queue.size === prevQueueSize) {
         // prevents an infinite loop, an otherwise common manifestation of bugs
         const seg = evt.segment;
-        throw new Error(`Unable to pop() ${evt.isLeft ? "left" : "right"} SweepEvent ` + `[${evt.point.x}, ${evt.point.y}] from segment #${seg.id} ` + `[${seg.leftSE.point.x}, ${seg.leftSE.point.y}] -> ` + `[${seg.rightSE.point.x}, ${seg.rightSE.point.y}] from queue.`);
+        throw new Error(
+          `Unable to pop() ${evt.isLeft ? "left" : "right"} SweepEvent ` +
+            `[${evt.point.x}, ${evt.point.y}] from segment #${seg.id} ` +
+            `[${seg.leftSE.point.x}, ${seg.leftSE.point.y}] -> ` +
+            `[${seg.rightSE.point.x}, ${seg.rightSE.point.y}] from queue.`,
+        )
       }
+
       if (queue.size > POLYGON_CLIPPING_MAX_QUEUE_SIZE) {
         // prevents an infinite loop, an otherwise common manifestation of bugs
-        throw new Error("Infinite loop when passing sweep line over endpoints " + "(queue size too big).");
+        throw new Error(
+          "Infinite loop when passing sweep line over endpoints " +
+            "(queue size too big).",
+        )
       }
+
       if (sweepLine.segments.length > POLYGON_CLIPPING_MAX_SWEEPLINE_SEGMENTS) {
         // prevents an infinite loop, an otherwise common manifestation of bugs
-        throw new Error("Infinite loop when passing sweep line over endpoints " + "(too many sweep line segments).");
+        throw new Error(
+          "Infinite loop when passing sweep line over endpoints " +
+            "(too many sweep line segments).",
+        )
       }
+
       const newEvents = sweepLine.process(evt);
       for (let i = 0, iMax = newEvents.length; i < iMax; i++) {
         const evt = newEvents[i];
@@ -1491,42 +1590,28 @@ class Operation {
     /* Collect and compile segments we're keeping into a multipolygon */
     const ringsOut = RingOut.factory(sweepLine.segments);
     const result = new MultiPolyOut(ringsOut);
-    return result.getGeom();
+    return result.getGeom()
   }
 }
 
 // singleton available by import
 const operation = new Operation();
 
-const union = function (geom) {
-  for (var _len = arguments.length, moreGeoms = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-    moreGeoms[_key - 1] = arguments[_key];
-  }
-  return operation.run("union", geom, moreGeoms);
-};
-const intersection = function (geom) {
-  for (var _len2 = arguments.length, moreGeoms = new Array(_len2 > 1 ? _len2 - 1 : 0), _key2 = 1; _key2 < _len2; _key2++) {
-    moreGeoms[_key2 - 1] = arguments[_key2];
-  }
-  return operation.run("intersection", geom, moreGeoms);
-};
-const xor = function (geom) {
-  for (var _len3 = arguments.length, moreGeoms = new Array(_len3 > 1 ? _len3 - 1 : 0), _key3 = 1; _key3 < _len3; _key3++) {
-    moreGeoms[_key3 - 1] = arguments[_key3];
-  }
-  return operation.run("xor", geom, moreGeoms);
-};
-const difference = function (subjectGeom) {
-  for (var _len4 = arguments.length, clippingGeoms = new Array(_len4 > 1 ? _len4 - 1 : 0), _key4 = 1; _key4 < _len4; _key4++) {
-    clippingGeoms[_key4 - 1] = arguments[_key4];
-  }
-  return operation.run("difference", subjectGeom, clippingGeoms);
-};
+const union = (geom, ...moreGeoms) => operation.run("union", geom, moreGeoms);
+
+const intersection = (geom, ...moreGeoms) =>
+  operation.run("intersection", geom, moreGeoms);
+
+const xor = (geom, ...moreGeoms) => operation.run("xor", geom, moreGeoms);
+
+const difference = (subjectGeom, ...clippingGeoms) =>
+  operation.run("difference", subjectGeom, clippingGeoms);
+
 var index = {
   union: union,
   intersection: intersection,
   xor: xor,
-  difference: difference
+  difference: difference,
 };
 
 export { index as default };
